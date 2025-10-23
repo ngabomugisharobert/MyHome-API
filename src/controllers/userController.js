@@ -13,7 +13,7 @@ const getAllUsers = async (req, res) => {
     let queryParams = [];
     
     if (search) {
-      whereClause = `WHERE (u.first_name ILIKE $1 OR u.last_name ILIKE $1 OR u.email ILIKE $1)`;
+      whereClause = `WHERE (u.name ILIKE $1 OR u.email ILIKE $1)`;
       queryParams.push(`%${search}%`);
     }
 
@@ -29,7 +29,7 @@ const getAllUsers = async (req, res) => {
 
     // Get users
     const usersResult = await query(`
-      SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.is_active,
+      SELECT u.id, u.email, u.name, u.role, u.is_active,
              u.email_verified, u.created_at, u.last_login,
              up.phone, up.city, up.country
       FROM users u
@@ -45,8 +45,7 @@ const getAllUsers = async (req, res) => {
         users: usersResult.rows.map(user => ({
           id: user.id,
           email: user.email,
-          firstName: user.first_name,
-          lastName: user.last_name,
+          name: user.name,
           role: user.role,
           isActive: user.is_active,
           emailVerified: user.email_verified,
@@ -81,7 +80,7 @@ const getUserById = async (req, res) => {
     const userId = req.params.id;
 
     const userResult = await query(`
-      SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.is_active,
+      SELECT u.id, u.email, u.name, u.role, u.is_active,
              u.email_verified, u.created_at, u.last_login,
              up.phone, up.address, up.city, up.state, up.country, up.postal_code,
              up.date_of_birth, up.bio, up.avatar_url
@@ -105,8 +104,7 @@ const getUserById = async (req, res) => {
         user: {
           id: user.id,
           email: user.email,
-          firstName: user.first_name,
-          lastName: user.last_name,
+          name: user.name,
           role: user.role,
           isActive: user.is_active,
           emailVerified: user.email_verified,
@@ -139,7 +137,7 @@ const getUserById = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { firstName, lastName, email, phone, address, city, state, country, postalCode, dateOfBirth, bio, avatarUrl } = req.body;
+    const { name, email, phone, address, city, state, country, postalCode, dateOfBirth, bio, avatarUrl } = req.body;
 
     // Check if user exists
     const userResult = await query('SELECT id FROM users WHERE id = $1', [userId]);
@@ -155,15 +153,9 @@ const updateProfile = async (req, res) => {
     const updateValues = [];
     let paramCount = 1;
 
-    if (firstName !== undefined) {
-      updateFields.push(`first_name = $${paramCount}`);
-      updateValues.push(firstName);
-      paramCount++;
-    }
-
-    if (lastName !== undefined) {
-      updateFields.push(`last_name = $${paramCount}`);
-      updateValues.push(lastName);
+    if (name !== undefined) {
+      updateFields.push(`name = $${paramCount}`);
+      updateValues.push(name);
       paramCount++;
     }
 
