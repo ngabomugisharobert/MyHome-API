@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config/config');
-const { query } = require('../config/database');
+const User = require('../models/User');
 
 // Middleware to verify JWT token
 const authenticateToken = async (req, res, next) => {
@@ -17,22 +17,19 @@ const authenticateToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, config.jwt.secret);
     
-    // Get user details from database
-    const userResult = await query(
-      'SELECT id, email, role, is_active FROM users WHERE id = $1',
-      [decoded.userId]
-    );
+    // Get user details from database using Sequelize
+    const user = await User.findByPk(decoded.userId, {
+      attributes: ['id', 'email', 'role', 'isActive']
+    });
 
-    if (userResult.rows.length === 0) {
+    if (!user) {
       return res.status(401).json({ 
         success: false, 
         message: 'User not found' 
       });
     }
-
-    const user = userResult.rows[0];
     
-    if (!user.is_active) {
+    if (!user.isActive) {
       return res.status(401).json({ 
         success: false, 
         message: 'Account is deactivated' 
