@@ -1,5 +1,5 @@
 // Middleware to filter data by facility based on user role and facility access
-const filterByFacility = (req, res, next) => {
+const filterByFacility = async (req, res, next) => {
   if (!req.user) {
     return next();
   }
@@ -14,15 +14,51 @@ const filterByFacility = (req, res, next) => {
 
   // Supervisor (owner) users - filter by their owned facilities
   if (user.role === 'supervisor') {
-    // We'll need to get the facilities owned by this user
-    // For now, we'll use their facilityId if they have one
+    // If they have a direct facilityId, use it
     if (user.facilityId) {
       req.facilityFilter = {
         facilityId: user.facilityId,
         userRole: 'supervisor'
       };
       console.log(`🏢 Supervisor filtering applied for user ${user.email} (Facility: ${user.facilityId})`);
+      return next();
     }
+    
+    // Otherwise, fetch their owned facilities
+    try {
+      const Facility = require('../models/Facility');
+      const facilities = await Facility.findAll({
+        where: {
+          ownerId: user.id,
+          status: 'active',
+          isActive: true
+        },
+        limit: 1,
+        attributes: ['id']
+      });
+      
+      if (facilities.length > 0) {
+        req.facilityFilter = {
+          facilityId: facilities[0].id,
+          userRole: 'supervisor'
+        };
+        console.log(`🏢 Supervisor filtering applied for user ${user.email} (Owned Facility: ${facilities[0].id})`);
+      } else {
+        console.warn(`⚠️ No owned facilities found for supervisor ${user.email} (ID: ${user.id})`);
+      }
+    } catch (error) {
+      console.error('Error fetching supervisor facilities:', error);
+    }
+    
+    // Always set facilityFilter even if empty, so controller can check
+    if (!req.facilityFilter && user.facilityId) {
+      req.facilityFilter = {
+        facilityId: user.facilityId,
+        userRole: 'supervisor'
+      };
+      console.log(`🏢 Supervisor using user.facilityId: ${user.facilityId}`);
+    }
+    
     return next();
   }
 

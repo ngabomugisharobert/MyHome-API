@@ -36,3 +36,6 @@ router.put('/:id', authorize('admin', 'supervisor', 'doctor', 'caregiver'), vali
 router.delete('/:id', authorize('admin', 'supervisor'), validateId, taskController.deleteTask);
 
 module.exports = router;
+
+
+

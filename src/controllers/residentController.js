@@ -31,10 +31,14 @@ const getAllResidents = async (req, res) => {
     // Apply search filter
     if (search) {
       whereClause[Op.or] = [
-        { name: { [Op.iLike]: `%${search}%` } },
-        { room: { [Op.iLike]: `%${search}%` } }
+        { firstName: { [Op.iLike]: `%${search}%` } },
+        { lastName: { [Op.iLike]: `%${search}%` } },
+        { roomNumber: { [Op.iLike]: `%${search}%` } }
       ];
     }
+
+    // Exclude soft-deleted records
+    whereClause.deletedAt = null;
 
     console.log('🔍 Querying residents with whereClause:', whereClause);
     
@@ -86,7 +90,11 @@ const getResidentById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const resident = await Resident.findByPk(id, {
+    const resident = await Resident.findOne({
+      where: {
+        id,
+        deletedAt: null
+      },
       include: [
         {
           model: Facility,
@@ -127,43 +135,91 @@ const getResidentById = async (req, res) => {
 // Create new resident
 const createResident = async (req, res) => {
   try {
+    console.log('🔍 Create resident - User:', req.user?.email, 'Role:', req.user?.role);
+    console.log('🔍 Request body facilityId:', req.body.facilityId);
+    console.log('🔍 Facility filter:', req.facilityFilter);
+
     const {
-      name,
-      dateOfBirth,
+      firstName,
+      lastName,
+      dob,
       gender,
-      room,
-      facilityId,
+      photoUrl,
       admissionDate,
-      medicalConditions,
+      dischargeDate,
+      roomNumber,
+      facilityId,
+      primaryPhysician,
+      emergencyContactName,
+      emergencyContactPhone,
+      diagnosis,
       allergies,
-      emergencyContact,
-      emergencyPhone,
-      notes
+      dietaryRestrictions,
+      mobilityLevel,
+      careLevel,
+      insuranceProvider,
+      policyNumber,
+      status
     } = req.body;
 
-    // Use facilityId from request or user's facility
-    const residentFacilityId = facilityId || req.facilityFilter?.facilityId;
+    // Use facilityId from request, facilityFilter, or user's facility
+    let residentFacilityId = facilityId || req.facilityFilter?.facilityId || req.user?.facilityId;
+
+    console.log('🔍 Initial residentFacilityId:', residentFacilityId);
+
+    // If still no facilityId and user is a supervisor (owner), try to get their owned facilities
+    if (!residentFacilityId && req.user?.role === 'supervisor') {
+      console.log('🔍 Fetching owned facilities for supervisor:', req.user.id);
+      const Facility = require('../models/Facility');
+      const ownedFacilities = await Facility.findAll({
+        where: {
+          ownerId: req.user.id,
+          status: 'active',
+          isActive: true
+        },
+        limit: 1,
+        attributes: ['id', 'name']
+      });
+      
+      console.log('🔍 Owned facilities found:', ownedFacilities.length);
+      
+      if (ownedFacilities.length > 0) {
+        residentFacilityId = ownedFacilities[0].id;
+        console.log('✅ Using owned facility:', ownedFacilities[0].id, ownedFacilities[0].name);
+      }
+    }
+
+    console.log('🔍 Final residentFacilityId:', residentFacilityId);
 
     if (!residentFacilityId) {
+      console.error('❌ No facility ID found. User:', req.user);
       return res.status(400).json({
         success: false,
-        message: 'Facility ID is required'
+        message: 'Facility ID is required. Please ensure you have access to a facility. If you are a facility owner, please make sure your facility is properly set up.'
       });
     }
 
     const resident = await Resident.create({
-      name,
-      dateOfBirth,
+      firstName: firstName || '',
+      lastName: lastName || '',
+      dob,
       gender,
-      room,
-      facilityId: residentFacilityId,
+      photoUrl,
       admissionDate,
-      medicalConditions,
+      dischargeDate,
+      roomNumber,
+      facilityId: residentFacilityId,
+      primaryPhysician,
+      emergencyContactName,
+      emergencyContactPhone,
+      diagnosis,
       allergies,
-      emergencyContact,
-      emergencyPhone,
-      notes,
-      status: 'active'
+      dietaryRestrictions,
+      mobilityLevel,
+      careLevel,
+      insuranceProvider,
+      policyNumber,
+      status: status || 'active'
     });
 
     res.status(201).json({
@@ -186,7 +242,12 @@ const updateResident = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    const resident = await Resident.findByPk(id);
+    const resident = await Resident.findOne({
+      where: {
+        id,
+        deletedAt: null
+      }
+    });
 
     if (!resident) {
       return res.status(404).json({
@@ -202,6 +263,9 @@ const updateResident = async (req, res) => {
         message: 'Access denied: You can only update residents from your facility'
       });
     }
+
+    // Prevent updating deletedAt through this endpoint
+    delete updateData.deletedAt;
 
     await resident.update(updateData);
 
@@ -219,17 +283,23 @@ const updateResident = async (req, res) => {
   }
 };
 
-// Delete resident
+// Soft delete resident (doesn't permanently delete)
 const deleteResident = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const resident = await Resident.findByPk(id);
+    // Find resident that is not already soft-deleted
+    const resident = await Resident.findOne({
+      where: {
+        id,
+        deletedAt: null
+      }
+    });
 
     if (!resident) {
       return res.status(404).json({
         success: false,
-        message: 'Resident not found'
+        message: 'Resident not found or already deleted'
       });
     }
 
@@ -241,11 +311,14 @@ const deleteResident = async (req, res) => {
       });
     }
 
-    await resident.destroy();
+    // Soft delete: set deletedAt timestamp instead of destroying
+    await resident.update({
+      deletedAt: new Date()
+    });
 
     res.json({
       success: true,
-      message: 'Resident deleted successfully'
+      message: 'Resident deleted successfully (soft delete)'
     });
   } catch (error) {
     console.error('Delete resident error:', error);

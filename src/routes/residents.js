@@ -30,3 +30,6 @@ router.put('/:id', authorize('admin', 'supervisor', 'doctor'), validateId, resid
 router.delete('/:id', authorize('admin'), validateId, residentController.deleteResident);
 
 module.exports = router;
+
+
+

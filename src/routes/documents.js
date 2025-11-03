@@ -33,3 +33,6 @@ router.put('/:id', authorize('admin', 'supervisor'), validateId, documentControl
 router.delete('/:id', authorize('admin', 'supervisor'), validateId, documentController.deleteDocument);
 
 module.exports = router;
+
+
+

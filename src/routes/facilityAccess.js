@@ -19,3 +19,6 @@ router.get('/owner/:userId/facilities', authorize('supervisor'), facilityAccessC
 router.put('/doctor/:userId/facility', authorize('doctor'), facilityAccessController.setDoctorFacility);
 
 module.exports = router;
+
+
+

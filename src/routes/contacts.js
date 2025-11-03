@@ -30,3 +30,6 @@ router.put('/:id', authorize('admin', 'supervisor'), validateId, contactControll
 router.delete('/:id', authorize('admin', 'supervisor'), validateId, contactController.deleteContact);
 
 module.exports = router;
+
+
+

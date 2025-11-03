@@ -55,3 +55,4 @@ const testFacilityOwner = async () => {
 };
 
 testFacilityOwner();
+

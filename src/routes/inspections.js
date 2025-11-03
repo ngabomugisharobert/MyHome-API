@@ -33,3 +33,6 @@ router.put('/:id', authorize('admin', 'supervisor'), validateId, inspectionContr
 router.delete('/:id', authorize('admin'), validateId, inspectionController.deleteInspection);
 
 module.exports = router;
+
+
+

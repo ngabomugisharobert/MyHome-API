@@ -20,6 +20,9 @@ const documentRoutes = require('./routes/documents');
 const taskRoutes = require('./routes/tasks');
 const inspectionRoutes = require('./routes/inspections');
 const facilityAccessRoutes = require('./routes/facilityAccess');
+const medicationRoutes = require('./routes/medications');
+const carePlanRoutes = require('./routes/carePlans');
+const scheduleRoutes = require('./routes/schedules');
 
 const app = express();
 
@@ -80,6 +83,9 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/inspections', inspectionRoutes);
 app.use('/api/facility-access', facilityAccessRoutes);
+app.use('/api/medications', medicationRoutes);
+app.use('/api/care-plans', carePlanRoutes);
+app.use('/api/schedules', scheduleRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -100,7 +106,10 @@ app.get('/', (req, res) => {
       documents: '/api/documents',
       tasks: '/api/tasks',
       inspections: '/api/inspections',
-      facilityAccess: '/api/facility-access'
+      facilityAccess: '/api/facility-access',
+      medications: '/api/medications',
+      carePlans: '/api/care-plans',
+      schedules: '/api/schedules'
     }
   });
 });
