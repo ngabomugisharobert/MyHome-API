@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const config = {
   // Server configuration
-  port: process.env.PORT || 3000,
+  port: process.env.PORT || 3005,
   nodeEnv: process.env.NODE_ENV || 'development',
   
   // Database configuration
@@ -24,7 +24,7 @@ const config = {
   
   // CORS configuration
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
     credentials: true
   },
   

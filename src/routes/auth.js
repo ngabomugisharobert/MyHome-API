@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController');
+const authController = require('../controllers/authControllerSimple');
 const { authenticateToken, authorize } = require('../middleware/auth');
 const { 
   validateUserRegistration, 
@@ -14,10 +14,8 @@ router.post('/register', authorize('admin'), validateUserRegistration, authContr
 router.post('/login', validateUserLogin, authController.login);
 router.post('/refresh-token', authController.refreshToken);
 router.post('/logout', authController.logout);
-router.post('/forgot-password', validateForgotPassword, authController.forgotPassword);
-router.post('/reset-password', validateResetPassword, authController.resetPassword);
 
-// Protected routes
+// Protected routes (require authentication)
 router.get('/profile', authenticateToken, authController.getProfile);
 
 module.exports = router;

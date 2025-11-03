@@ -5,11 +5,24 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const config = require('./config/config');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
+const { sessionManager } = require('./middleware/sessionManager');
 
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const facilityRoutes = require('./routes/facilities');
+const teamRoutes = require('./routes/team');
+const roleRoutes = require('./routes/roles');
+const accessRoutes = require('./routes/access');
+const residentRoutes = require('./routes/residents');
+const contactRoutes = require('./routes/contacts');
+const documentRoutes = require('./routes/documents');
+const taskRoutes = require('./routes/tasks');
+const inspectionRoutes = require('./routes/inspections');
+const facilityAccessRoutes = require('./routes/facilityAccess');
+const medicationRoutes = require('./routes/medications');
+const carePlanRoutes = require('./routes/carePlans');
+const scheduleRoutes = require('./routes/schedules');
 
 const app = express();
 
@@ -44,6 +57,9 @@ if (config.nodeEnv === 'development') {
   app.use(morgan('combined'));
 }
 
+// Session management middleware
+app.use(sessionManager);
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -58,6 +74,18 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/facilities', facilityRoutes);
+app.use('/api/team', teamRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/access', accessRoutes);
+app.use('/api/residents', residentRoutes);
+app.use('/api/contacts', contactRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/inspections', inspectionRoutes);
+app.use('/api/facility-access', facilityAccessRoutes);
+app.use('/api/medications', medicationRoutes);
+app.use('/api/care-plans', carePlanRoutes);
+app.use('/api/schedules', scheduleRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -69,7 +97,19 @@ app.get('/', (req, res) => {
       health: '/health',
       auth: '/api/auth',
       users: '/api/users',
-      facilities: '/api/facilities'
+      facilities: '/api/facilities',
+      team: '/api/team',
+      roles: '/api/roles',
+      access: '/api/access',
+      residents: '/api/residents',
+      contacts: '/api/contacts',
+      documents: '/api/documents',
+      tasks: '/api/tasks',
+      inspections: '/api/inspections',
+      facilityAccess: '/api/facility-access',
+      medications: '/api/medications',
+      carePlans: '/api/care-plans',
+      schedules: '/api/schedules'
     }
   });
 });

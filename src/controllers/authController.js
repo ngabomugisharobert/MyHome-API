@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { query } = require('../config/database');
+const User = require('../models/User');
 const config = require('../config/config');
 
 // Generate JWT tokens
@@ -26,10 +26,9 @@ const storeRefreshToken = async (userId, refreshToken) => {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
   
-  await query(
-    'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
-    [userId, refreshToken, expiresAt]
-  );
+  // For now, we'll skip storing refresh tokens in the database
+  // This can be implemented later with a proper RefreshToken model
+  console.log('Refresh token generated for user:', userId);
 };
 
 // Register new user (Admin only)
@@ -112,25 +111,33 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt for:', email);
 
-    // Find user
-    const userResult = await query(`
-      SELECT id, email, password_hash, name, role, is_active, email_verified, 
-             failed_login_attempts, locked_until, facility_id
-      FROM users WHERE email = $1
-    `, [email]);
+    // Find user using Sequelize
+    const user = await User.findOne({
+      where: { email: email }
+    });
 
-    if (userResult.rows.length === 0) {
+    console.log('User found:', user ? 'Yes' : 'No');
+    if (user) {
+      console.log('User details:', {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive
+      });
+    }
+
+    if (!user) {
+      console.log('User not found');
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
-    const user = userResult.rows[0];
-
     // Check if account is locked
-    if (user.locked_until && new Date() < new Date(user.locked_until)) {
+    if (user.lockedUntil && new Date() < new Date(user.lockedUntil)) {
       return res.status(423).json({
         success: false,
         message: 'Account is temporarily locked due to multiple failed login attempts'
@@ -138,7 +145,7 @@ const login = async (req, res) => {
     }
 
     // Check if account is active
-    if (!user.is_active) {
+    if (!user.isActive) {
       return res.status(401).json({
         success: false,
         message: 'Account is deactivated'
@@ -146,18 +153,18 @@ const login = async (req, res) => {
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       // Increment failed login attempts
-      const newAttempts = (user.failed_login_attempts || 0) + 1;
+      const newAttempts = (user.failedLoginAttempts || 0) + 1;
       const lockUntil = newAttempts >= config.security.maxFailedAttempts 
         ? new Date(Date.now() + config.security.lockoutDuration * 60 * 1000)
         : null;
 
-      await query(
-        'UPDATE users SET failed_login_attempts = $1, locked_until = $2 WHERE id = $3',
-        [newAttempts, lockUntil, user.id]
-      );
+      await user.update({
+        failedLoginAttempts: newAttempts,
+        lockedUntil: lockUntil
+      });
 
       return res.status(401).json({
         success: false,
@@ -166,10 +173,11 @@ const login = async (req, res) => {
     }
 
     // Reset failed login attempts on successful login
-    await query(
-      'UPDATE users SET failed_login_attempts = 0, locked_until = NULL, last_login = CURRENT_TIMESTAMP WHERE id = $1',
-      [user.id]
-    );
+    await user.update({
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLogin: new Date()
+    });
 
     // Generate tokens
     const { accessToken, refreshToken } = generateTokens(user.id);
@@ -184,9 +192,9 @@ const login = async (req, res) => {
           email: user.email,
           name: user.name,
           role: user.role,
-          facilityId: user.facility_id,
-          isActive: user.is_active,
-          emailVerified: user.email_verified
+          facilityId: user.facilityId,
+          isActive: user.isActive,
+          emailVerified: user.emailVerified
         },
         tokens: {
           accessToken,

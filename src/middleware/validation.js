@@ -81,11 +81,11 @@ const validatePasswordChange = [
   handleValidationErrors
 ];
 
-// ID parameter validation
+// ID parameter validation (for UUIDs)
 const validateId = [
   param('id')
-    .isInt({ min: 1 })
-    .withMessage('ID must be a positive integer'),
+    .isUUID()
+    .withMessage('ID must be a valid UUID'),
   handleValidationErrors
 ];
 
