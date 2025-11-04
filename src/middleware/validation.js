@@ -89,6 +89,14 @@ const validateId = [
   handleValidationErrors
 ];
 
+// Generic UUID parameter validator
+const validateUUIDParam = (paramName) => [
+  param(paramName)
+    .isUUID()
+    .withMessage(`${paramName.replace(/([A-Z])/g, ' $1')} must be a valid UUID`),
+  handleValidationErrors
+];
+
 // Password reset validation
 const validateForgotPassword = [
   body('email')
@@ -151,6 +159,62 @@ const validatePagination = [
   handleValidationErrors
 ];
 
+// Resident validation
+const validateResident = [
+  body('firstName')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('First name is required and must be less than 255 characters'),
+  body('lastName')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Last name is required and must be less than 255 characters'),
+  body('dob')
+    .optional()
+    .isISO8601()
+    .withMessage('Date of birth must be a valid date'),
+  body('gender')
+    .optional()
+    .isIn(['male', 'female', 'other'])
+    .withMessage('Gender must be one of: male, female, other'),
+  body('admissionDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Admission date must be a valid date'),
+  body('dischargeDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Discharge date must be a valid date'),
+  body('primaryPhysician')
+    .optional()
+    .custom((value) => {
+      if (!value) return true; // Allow empty/null
+      // Check if it's a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(value)) {
+        throw new Error('Primary physician must be a valid UUID. Please select a user from the list or leave it empty.');
+      }
+      return true;
+    }),
+  body('facilityId')
+    .optional()
+    .isUUID()
+    .withMessage('Facility ID must be a valid UUID'),
+  body('mobilityLevel')
+    .optional()
+    .isIn(['independent', 'assisted', 'wheelchair', 'bedridden'])
+    .withMessage('Mobility level must be one of: independent, assisted, wheelchair, bedridden'),
+  body('careLevel')
+    .optional()
+    .isIn(['independent', 'assisted_living', 'memory_care', 'skilled_nursing', 'hospice'])
+    .withMessage('Care level must be one of: independent, assisted_living, memory_care, skilled_nursing, hospice'),
+  body('status')
+    .optional()
+    .isIn(['active', 'inactive', 'discharged'])
+    .withMessage('Status must be one of: active, inactive, discharged'),
+  handleValidationErrors
+];
+
 module.exports = {
   handleValidationErrors,
   validateUserRegistration,
@@ -161,5 +225,7 @@ module.exports = {
   validateResetPassword,
   validateFacility,
   validateId,
-  validatePagination
+  validatePagination,
+  validateResident,
+  validateUUIDParam
 };

@@ -40,6 +40,11 @@ const Document = sequelize.define('Document', {
     allowNull: true,
     field: 'mime_type'
   },
+  fileHash: {
+    type: DataTypes.STRING(128),
+    allowNull: true,
+    field: 'file_hash'
+  },
   facilityId: {
     type: DataTypes.UUID,
     allowNull: false,
@@ -114,9 +119,12 @@ const Document = sequelize.define('Document', {
 // Define associations
 const Facility = require('./Facility');
 const User = require('./User');
+const Resident = require('./Resident');
 Document.belongsTo(Facility, { foreignKey: 'facilityId', as: 'facility' });
 Document.belongsTo(User, { foreignKey: 'uploadedBy', as: 'uploader' });
+Document.belongsTo(Resident, { foreignKey: 'residentId', as: 'resident' });
 Facility.hasMany(Document, { foreignKey: 'facilityId', as: 'documents' });
 User.hasMany(Document, { foreignKey: 'uploadedBy', as: 'uploadedDocuments' });
+Resident.hasMany(Document, { foreignKey: 'residentId', as: 'documents' });
 
 module.exports = Document;

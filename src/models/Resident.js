@@ -119,12 +119,12 @@ const Resident = sequelize.define('Resident', {
   createdAt: {
     type: DataTypes.DATE,
     allowNull: true,
-    field: 'created_at'
+    field: 'createdAt'
   },
   updatedAt: {
     type: DataTypes.DATE,
     allowNull: true,
-    field: 'updated_at'
+    field: 'updatedAt'
   },
   deletedAt: {
     type: DataTypes.DATE,
@@ -134,8 +134,8 @@ const Resident = sequelize.define('Resident', {
 }, {
   tableName: 'residents',
   timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
   paranoid: false, // We'll handle soft delete manually
   getterMethods: {
     fullName() {
