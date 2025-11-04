@@ -95,8 +95,10 @@ const cleanupExpiredSessions = () => {
   }
 };
 
-// Run cleanup every hour
-setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
+// Run cleanup every hour (skip during automated tests)
+if (process.env.NODE_ENV !== 'test') {
+  setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
+}
 
 module.exports = {
   sessionManager,

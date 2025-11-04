@@ -18,28 +18,31 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, config.jwt.secret);
     
     // Get user details from database using Sequelize
-    const user = await User.findByPk(decoded.userId, {
-      attributes: ['id', 'email', 'role', 'isActive']
+    const userRecord = await User.findByPk(decoded.userId, {
+      attributes: ['id', 'email', 'role', 'isActive', 'facilityId']
     });
 
-    if (!user) {
+    if (!userRecord) {
       return res.status(401).json({ 
         success: false, 
         message: 'User not found' 
       });
     }
     
-    if (!user.isActive) {
+    if (!userRecord.isActive) {
       return res.status(401).json({ 
         success: false, 
         message: 'Account is deactivated' 
       });
     }
 
+    const user = userRecord.get({ plain: true });
+
     req.user = {
       id: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      facilityId: user.facilityId || null
     };
     
     next();

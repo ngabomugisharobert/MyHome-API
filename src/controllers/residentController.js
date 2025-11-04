@@ -1,6 +1,8 @@
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
 const Resident = require('../models/Resident');
 const Facility = require('../models/Facility');
+const User = require('../models/User');
 
 // Get all residents for a facility
 const getAllResidents = async (req, res) => {
@@ -37,36 +39,55 @@ const getAllResidents = async (req, res) => {
       ];
     }
 
-    // Exclude soft-deleted records
-    whereClause.deletedAt = null;
-
-    console.log('🔍 Querying residents with whereClause:', whereClause);
+    // Exclude soft-deleted records - combine with existing conditions properly
+    let finalWhere = whereClause;
+    
+    // If we have Op.or, we need to wrap it in Op.and to combine with deletedAt
+    if (whereClause[Op.or]) {
+      finalWhere = {
+        [Op.and]: [
+          { [Op.or]: whereClause[Op.or] },
+          { deletedAt: null }
+        ]
+      };
+    } else {
+      // No search, just add deletedAt condition
+      finalWhere = {
+        ...whereClause,
+        deletedAt: null
+      };
+    }
+    console.log('🔍 Querying residents with whereClause:', finalWhere);
     
     const { count, rows: residents } = await Resident.findAndCountAll({
-      where: whereClause,
+      where: finalWhere,
       include: [
         {
           model: Facility,
           as: 'facility',
-          attributes: ['id', 'name']
+          attributes: ['id', 'name'],
+          required: false
         }
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
+      order: [[sequelize.literal('"Resident"."createdAt"'), 'DESC']]
     });
     
     console.log('🔍 Query result:', { count, residentsCount: residents.length });
+    
+    // Ensure we always return an array, even if empty
+    const residentsList = residents || [];
 
     res.json({
       success: true,
       data: {
-        residents,
+        residents: residentsList,
         pagination: {
-          total: count,
+          total: count || 0,
           page: parseInt(page),
           limit: parseInt(limit),
-          pages: Math.ceil(count / limit)
+          pages: Math.ceil((count || 0) / limit)
         }
       }
     });
@@ -199,39 +220,143 @@ const createResident = async (req, res) => {
       });
     }
 
-    const resident = await Resident.create({
-      firstName: firstName || '',
-      lastName: lastName || '',
-      dob,
-      gender,
-      photoUrl,
-      admissionDate,
-      dischargeDate,
-      roomNumber,
-      facilityId: residentFacilityId,
-      primaryPhysician,
-      emergencyContactName,
-      emergencyContactPhone,
-      diagnosis,
-      allergies,
-      dietaryRestrictions,
-      mobilityLevel,
-      careLevel,
-      insuranceProvider,
-      policyNumber,
-      status: status || 'active'
-    });
+    // Validate required fields
+    if (!firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        message: 'First name and last name are required'
+      });
+    }
 
+    // Validate UUID fields
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (primaryPhysician && primaryPhysician.trim() && !uuidRegex.test(primaryPhysician.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Primary physician must be a valid UUID. Please select a user from the list or leave it empty.'
+      });
+    }
+
+    // Convert date strings to Date objects if provided (handle invalid dates)
+    let dobDate = null;
+    if (dob && dob.trim()) {
+      const parsedDob = new Date(dob);
+      if (!isNaN(parsedDob.getTime())) {
+        dobDate = parsedDob;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid date of birth format'
+        });
+      }
+    }
+
+    let admissionDateObj = null;
+    if (admissionDate && admissionDate.trim()) {
+      const parsedDate = new Date(admissionDate);
+      if (!isNaN(parsedDate.getTime())) {
+        admissionDateObj = parsedDate;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid admission date format'
+        });
+      }
+    }
+
+    let dischargeDateObj = null;
+    if (dischargeDate && dischargeDate.trim()) {
+      const parsedDate = new Date(dischargeDate);
+      if (!isNaN(parsedDate.getTime())) {
+        dischargeDateObj = parsedDate;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid discharge date format'
+        });
+      }
+    }
+
+    // Validate date logic
+    if (admissionDateObj && dischargeDateObj && admissionDateObj > dischargeDateObj) {
+      return res.status(400).json({
+        success: false,
+        message: 'Discharge date cannot be earlier than admission date'
+      });
+    }
+
+    // Create resident data object - convert empty strings to null for optional fields
+    const residentData = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      dob: dobDate,
+      gender: (gender && ['male', 'female', 'other'].includes(gender)) ? gender : null,
+      photoUrl: photoUrl && photoUrl.trim() ? photoUrl.trim() : null,
+      admissionDate: admissionDateObj,
+      dischargeDate: dischargeDateObj,
+      roomNumber: roomNumber && roomNumber.trim() ? roomNumber.trim() : null,
+      facilityId: residentFacilityId,
+      primaryPhysician: (primaryPhysician && primaryPhysician.trim() && uuidRegex.test(primaryPhysician.trim())) 
+        ? primaryPhysician.trim() 
+        : null,
+      emergencyContactName: emergencyContactName && emergencyContactName.trim() ? emergencyContactName.trim() : null,
+      emergencyContactPhone: emergencyContactPhone && emergencyContactPhone.trim() ? emergencyContactPhone.trim() : null,
+      diagnosis: diagnosis && diagnosis.trim() ? diagnosis.trim() : null,
+      allergies: allergies && allergies.trim() ? allergies.trim() : null,
+      dietaryRestrictions: dietaryRestrictions && dietaryRestrictions.trim() ? dietaryRestrictions.trim() : null,
+      mobilityLevel: (mobilityLevel && ['independent', 'assisted', 'wheelchair', 'bedridden'].includes(mobilityLevel)) 
+        ? mobilityLevel 
+        : null,
+      careLevel: (careLevel && ['independent', 'assisted_living', 'memory_care', 'skilled_nursing', 'hospice'].includes(careLevel)) 
+        ? careLevel 
+        : null,
+      insuranceProvider: insuranceProvider && insuranceProvider.trim() ? insuranceProvider.trim() : null,
+      policyNumber: policyNumber && policyNumber.trim() ? policyNumber.trim() : null,
+      status: (status && ['active', 'inactive', 'discharged'].includes(status)) ? status : 'active'
+    };
+
+    console.log('📤 Creating resident with data:', JSON.stringify(residentData, null, 2));
+
+    const resident = await Resident.create(residentData);
+
+    console.log('✅ Resident created successfully:', resident.id);
+    
     res.status(201).json({
       success: true,
       message: 'Resident created successfully',
       data: { resident }
     });
   } catch (error) {
-    console.error('Create resident error:', error);
+    console.error('❌ Create resident error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      sql: error.sql,
+      original: error.original?.message,
+      stack: error.stack
+    });
+    
+    // Handle validation errors
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors.map(e => e.message)
+      });
+    }
+    
+    // Handle foreign key constraint errors
+    if (error.name === 'SequelizeForeignKeyConstraintError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid facility ID or related reference'
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Failed to create resident'
+      message: error.message || 'Failed to create resident',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -266,6 +391,30 @@ const updateResident = async (req, res) => {
 
     // Prevent updating deletedAt through this endpoint
     delete updateData.deletedAt;
+
+    // Validate UUID for primaryPhysician if provided
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (updateData.primaryPhysician && !uuidRegex.test(updateData.primaryPhysician)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Primary physician must be a valid UUID. Please select a user from the list or leave it empty.'
+      });
+    }
+
+    // Convert date strings to Date objects if provided
+    if (updateData.dob) updateData.dob = new Date(updateData.dob);
+    if (updateData.admissionDate) updateData.admissionDate = new Date(updateData.admissionDate);
+    if (updateData.dischargeDate) updateData.dischargeDate = new Date(updateData.dischargeDate);
+
+    // Clean up empty strings to null for optional fields
+    const optionalFields = ['photoUrl', 'roomNumber', 'primaryPhysician', 'emergencyContactName', 
+                            'emergencyContactPhone', 'diagnosis', 'allergies', 'dietaryRestrictions',
+                            'mobilityLevel', 'careLevel', 'insuranceProvider', 'policyNumber'];
+    optionalFields.forEach(field => {
+      if (updateData[field] === '') {
+        updateData[field] = null;
+      }
+    });
 
     await resident.update(updateData);
 
@@ -368,11 +517,44 @@ const getResidentsStats = async (req, res) => {
   }
 };
 
+// Get available physicians (doctors) for primary physician selection
+const getAvailablePhysicians = async (req, res) => {
+  try {
+    let whereClause = {
+      role: 'doctor',
+      isActive: true
+    };
+
+    // Filter by facility if user has facilityId (to show only doctors from same facility)
+    if (req.facilityFilter && req.facilityFilter.facilityId) {
+      whereClause.facilityId = req.facilityFilter.facilityId;
+    }
+
+    const physicians = await User.findAll({
+      where: whereClause,
+      attributes: ['id', 'name', 'email', 'role'],
+      order: [['name', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      data: { physicians }
+    });
+  } catch (error) {
+    console.error('Get available physicians error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch available physicians'
+    });
+  }
+};
+
 module.exports = {
   getAllResidents,
   getResidentById,
   createResident,
   updateResident,
   deleteResident,
-  getResidentsStats
+  getResidentsStats,
+  getAvailablePhysicians
 };

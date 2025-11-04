@@ -1,0 +1,962 @@
+{
+	"info": {
+		"_postman_id": "myhome-api-collection",
+		"name": "MyHome Healthcare API",
+		"description": "Comprehensive API collection for MyHome Healthcare Management System. Includes authentication, users, facilities, residents, documents (with file upload), medications, care plans, and scheduling endpoints.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "myhome-api"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"SecurePass123!@#\",\n  \"name\": \"Admin User\",\n  \"role\": \"admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "register"]
+						},
+						"description": "Register a new user in the system. Roles: admin, supervisor, doctor, caregiver"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.tokens) {",
+									"        pm.environment.set('access_token', jsonData.data.tokens.accessToken);",
+									"        pm.environment.set('refresh_token', jsonData.data.tokens.refreshToken);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"SecurePass123!@#\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Login and get access token. Automatically saves tokens to environment variables."
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/refresh",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "refresh"]
+						},
+						"description": "Refresh access token using refresh token"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/profile",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "profile"]
+						},
+						"description": "Get current authenticated user's profile"
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "logout"]
+						},
+						"description": "Logout and invalidate session"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints for user registration, login, token refresh, and logout"
+		},
+		{
+			"name": "Residents",
+			"item": [
+				{
+					"name": "Get All Residents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/residents?page=1&limit=10&status=active&search=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "residents"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10, max: 100)"
+								},
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by status: active, inactive, discharged (optional)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search by firstName, lastName, or roomNumber (optional)"
+								}
+							]
+						},
+						"description": "Get paginated list of residents. Accessible by: Admin, Supervisor, Doctor, Caregiver. Non-admin users see only residents from their facility."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Resident by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/residents/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "residents", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "resident-uuid-here",
+									"description": "Resident UUID"
+								}
+							]
+						},
+						"description": "Get a single resident by ID. Accessible by: Admin, Supervisor, Doctor, Caregiver"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Available Physicians",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/residents/physicians",
+							"host": ["{{base_url}}"],
+							"path": ["api", "residents", "physicians"]
+						},
+						"description": "Get list of available physicians (doctors) for primary physician selection. Accessible by: Admin, Supervisor, Doctor. Non-admin users see only doctors from their facility."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Residents Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/residents/stats",
+							"host": ["{{base_url}}"],
+							"path": ["api", "residents", "stats"]
+						},
+						"description": "Get residents statistics (total, active, inactive, discharged). Accessible by: Admin, Supervisor"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Resident",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"dob\": \"1950-01-15\",\n  \"gender\": \"male\",\n  \"photoUrl\": \"https://example.com/photo.jpg\",\n  \"admissionDate\": \"2024-01-01\",\n  \"dischargeDate\": null,\n  \"roomNumber\": \"101\",\n  \"facilityId\": \"facility-uuid-here\",\n  \"primaryPhysician\": \"doctor-uuid-here\",\n  \"emergencyContactName\": \"Jane Doe\",\n  \"emergencyContactPhone\": \"555-1234\",\n  \"diagnosis\": \"Hypertension\",\n  \"allergies\": \"Peanuts\",\n  \"dietaryRestrictions\": \"Low sodium\",\n  \"mobilityLevel\": \"assisted\",\n  \"careLevel\": \"assisted_living\",\n  \"insuranceProvider\": \"Test Insurance\",\n  \"policyNumber\": \"POL-12345\",\n  \"status\": \"active\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/residents",
+							"host": ["{{base_url}}"],
+							"path": ["api", "residents"]
+						},
+						"description": "Create a new resident. **Required fields:** firstName, lastName, facilityId. **Accessible by:** Admin, Supervisor\n\n**Field Details:**\n- firstName, lastName: Required strings\n- facilityId: Required UUID (foreign key to facilities table)\n- dob: Date in YYYY-MM-DD format (optional)\n- gender: 'male', 'female', or 'other' (optional)\n- admissionDate, dischargeDate: ISO date strings (optional)\n- primaryPhysician: UUID of doctor user (optional)\n- mobilityLevel: 'independent', 'assisted', 'wheelchair', 'bedridden' (optional)\n- careLevel: 'independent', 'assisted_living', 'memory_care', 'skilled_nursing', 'hospice' (optional)\n- status: 'active', 'inactive', 'discharged' (default: 'active')"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Resident",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe Updated\",\n  \"roomNumber\": \"202\",\n  \"diagnosis\": \"Updated diagnosis\",\n  \"facilityId\": \"facility-uuid-here\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/residents/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "residents", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "resident-uuid-here",
+									"description": "Resident UUID"
+								}
+							]
+						},
+						"description": "Update an existing resident. **Accessible by:** Admin, Supervisor, Doctor. Only send fields you want to update."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Resident (Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/residents/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "residents", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "resident-uuid-here",
+									"description": "Resident UUID"
+								}
+							]
+						},
+						"description": "Soft delete a resident (marks as deleted but doesn't permanently remove). **Accessible by:** Admin only"
+					},
+					"response": []
+				}
+			],
+			"description": "Residents management endpoints. Handle CRUD operations for facility residents with comprehensive healthcare information."
+		},
+		{
+			"name": "Facilities",
+			"item": [
+				{
+					"name": "Get All Facilities",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/facilities",
+							"host": ["{{base_url}}"],
+							"path": ["api", "facilities"]
+						},
+						"description": "Get all facilities. Accessible by: Admin, Supervisor"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Facility by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/facilities/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "facilities", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "facility-uuid-here"
+								}
+							]
+						},
+						"description": "Get facility details by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Facility",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Healthcare Facility\",\n  \"address\": \"123 Main St\",\n  \"phone\": \"555-1234\",\n  \"email\": \"facility@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/facilities",
+							"host": ["{{base_url}}"],
+							"path": ["api", "facilities"]
+						},
+						"description": "Create a new facility. Accessible by: Admin"
+					},
+					"response": []
+				}
+			],
+			"description": "Facility management endpoints"
+		},
+		{
+			"name": "Facility Access",
+			"item": [
+				{
+					"name": "Get User Accessible Facilities",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/facility-access/user/:userId/facilities",
+							"host": ["{{base_url}}"],
+							"path": ["api", "facility-access", "user", ":userId", "facilities"],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "user-uuid-here",
+									"description": "User UUID"
+								}
+							]
+						},
+						"description": "Get facilities accessible to a user based on their role:\n- Admin: All facilities\n- Supervisor: Owned facilities\n- Doctor: All facilities (for selection)\n- Caregiver: Assigned facility only"
+					},
+					"response": []
+				}
+			],
+			"description": "Facility access management based on user roles"
+		},
+		{
+			"name": "Medications",
+			"item": [
+				{
+					"name": "Get All Medications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/medications",
+							"host": ["{{base_url}}"],
+							"path": ["api", "medications"]
+						},
+						"description": "Get all medications. Filtered by facility for non-admin users."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Medication Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/medications/stats",
+							"host": ["{{base_url}}"],
+							"path": ["api", "medications", "stats"]
+						},
+						"description": "Get medication statistics"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Medication",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Aspirin\",\n  \"description\": \"Pain reliever\",\n  \"dosage\": \"100\",\n  \"unit\": \"mg\",\n  \"route\": \"oral\",\n  \"frequency\": \"daily\",\n  \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/medications",
+							"host": ["{{base_url}}"],
+							"path": ["api", "medications"]
+						},
+						"description": "Create a new medication"
+					},
+					"response": []
+				}
+			],
+			"description": "Medication management endpoints"
+		},
+		{
+			"name": "Care Plans",
+			"item": [
+				{
+					"name": "Get All Care Plans",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/care-plans",
+							"host": ["{{base_url}}"],
+							"path": ["api", "care-plans"]
+						},
+						"description": "Get all care plans. Filtered by facility for non-admin users."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Care Plan",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"residentId\": \"resident-uuid-here\",\n  \"title\": \"Physical Therapy Plan\",\n  \"description\": \"Weekly physical therapy sessions\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/care-plans",
+							"host": ["{{base_url}}"],
+							"path": ["api", "care-plans"]
+						},
+						"description": "Create a new care plan for a resident"
+					},
+					"response": []
+				}
+			],
+			"description": "Care plan management endpoints"
+		},
+		{
+			"name": "Schedules",
+			"item": [
+				{
+					"name": "Get All Schedules",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/schedules",
+							"host": ["{{base_url}}"],
+							"path": ["api", "schedules"]
+						},
+						"description": "Get all schedules. Filtered by facility for non-admin users."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Schedule",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"facilityId\": \"facility-uuid-here\",\n  \"title\": \"Weekly Meeting\",\n  \"description\": \"Staff meeting\",\n  \"type\": \"meeting\",\n  \"startDate\": \"2024-01-01T10:00:00Z\",\n  \"endDate\": \"2024-01-01T11:00:00Z\",\n  \"isRecurring\": true,\n  \"recurrencePattern\": \"weekly\",\n  \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/schedules",
+							"host": ["{{base_url}}"],
+							"path": ["api", "schedules"]
+						},
+						"description": "Create a new schedule"
+					},
+					"response": []
+				}
+			],
+			"description": "Schedule management endpoints"
+		},
+		{
+			"name": "Documents",
+			"item": [
+				{
+					"name": "Upload Document",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "title",
+									"value": "Medical Report",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Annual medical examination report",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "medical",
+									"type": "text",
+									"description": "Options: license, insurance, compliance, medical, administrative, legal, financial"
+								},
+								{
+									"key": "residentId",
+									"value": "{{resident_id}}",
+									"type": "text",
+									"description": "Optional: UUID of resident if document is associated with a resident"
+								},
+								{
+									"key": "expiryDate",
+									"value": "2025-12-31",
+									"type": "text",
+									"description": "Optional: Expiry date in YYYY-MM-DD format"
+								},
+								{
+									"key": "isConfidential",
+									"value": "false",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/documents",
+							"host": ["{{base_url}}"],
+							"path": ["api", "documents"]
+						},
+						"description": "Upload a document file. Max file size: 10MB. Allowed types: Images, PDF, Word, Excel, PowerPoint, Text, CSV. Access: Admin, Supervisor"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Documents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/documents?page=1&limit=10&category=&search=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "documents"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "category",
+									"value": "",
+									"description": "Optional: Filter by category"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Optional: Search by title, description, or fileName"
+								}
+							]
+						},
+						"description": "Get all documents with pagination and filtering. Access: Admin, Supervisor"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Resident Documents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/documents/resident/{{resident_id}}?page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "documents", "resident", "{{resident_id}}"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "category",
+									"value": "",
+									"description": "Optional: Filter by category"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Optional: Search by title, description, or fileName"
+								}
+							]
+						},
+						"description": "Get all documents for a specific resident. Access: Admin, Supervisor, Doctor, Caregiver"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Document by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/documents/{{document_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "documents", "{{document_id}}"]
+						},
+						"description": "Get document details by ID. Access: Admin, Supervisor"
+					},
+					"response": []
+				},
+				{
+					"name": "Download Document",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/documents/{{document_id}}/download",
+							"host": ["{{base_url}}"],
+							"path": ["api", "documents", "{{document_id}}", "download"]
+						},
+						"description": "Download the actual document file. Returns file stream. Access: Admin, Supervisor, Doctor, Caregiver"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Documents by Category",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/documents/category/medical",
+							"host": ["{{base_url}}"],
+							"path": ["api", "documents", "category", "medical"],
+							"variable": [
+								{
+									"key": "category",
+									"value": "medical",
+									"description": "Options: license, insurance, compliance, medical, administrative, legal, financial"
+								}
+							]
+						},
+						"description": "Get all documents in a specific category. Access: Admin, Supervisor"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Expiring Documents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/documents/expiring?days=30",
+							"host": ["{{base_url}}"],
+							"path": ["api", "documents", "expiring"],
+							"query": [
+								{
+									"key": "days",
+									"value": "30",
+									"description": "Optional: Number of days ahead to check (default: 30)"
+								}
+							]
+						},
+						"description": "Get documents that will expire within specified days. Access: Admin, Supervisor"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Document",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated Document Title\",\n  \"description\": \"Updated description\",\n  \"category\": \"medical\",\n  \"expiryDate\": \"2025-12-31\",\n  \"isConfidential\": true,\n  \"tags\": [\"urgent\", \"review\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/documents/{{document_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "documents", "{{document_id}}"]
+						},
+						"description": "Update document metadata (not file). Access: Admin, Supervisor"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Document",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/documents/{{document_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "documents", "{{document_id}}"]
+						},
+						"description": "Delete document and associated file. Access: Admin, Supervisor"
+					},
+					"response": []
+				}
+			],
+			"description": "Document management endpoints with file upload support"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3005",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "document_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+

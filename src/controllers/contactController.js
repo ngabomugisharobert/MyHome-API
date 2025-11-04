@@ -285,13 +285,75 @@ const getEmergencyContacts = async (req, res) => {
   }
 };
 
+// Get contacts for a specific resident
+const getResidentContacts = async (req, res) => {
+  try {
+    const { residentId } = req.params;
+    const { page = 1, limit = 10, type, search } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const whereClause = { residentId };
+    
+    if (type) {
+      whereClause.type = type;
+    }
+
+    if (search) {
+      whereClause[Op.or] = [
+        { name: { [Op.iLike]: `%${search}%` } },
+        { phone: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    const { count, rows: contacts } = await Contact.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: Facility,
+          as: 'facility',
+          attributes: ['id', 'name']
+        },
+        {
+          model: Resident,
+          as: 'resident',
+          attributes: ['id', 'firstName', 'lastName', 'roomNumber']
+        }
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: {
+        contacts,
+        pagination: {
+          total: count,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(count / parseInt(limit))
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get resident contacts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get resident contacts'
+    });
+  }
+};
+
 module.exports = {
   getAllContacts,
   getContactById,
   createContact,
   updateContact,
   deleteContact,
-  getEmergencyContacts
+  getEmergencyContacts,
+  getResidentContacts
 };
 
 

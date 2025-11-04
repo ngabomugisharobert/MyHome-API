@@ -23,6 +23,10 @@ const facilityAccessRoutes = require('./routes/facilityAccess');
 const medicationRoutes = require('./routes/medications');
 const carePlanRoutes = require('./routes/carePlans');
 const scheduleRoutes = require('./routes/schedules');
+const residentNoteRoutes = require('./routes/residentNotes');
+const residentAssessmentRoutes = require('./routes/residentAssessments');
+const residentReportRoutes = require('./routes/residentReports');
+const residentFormRoutes = require('./routes/residentForms');
 
 const app = express();
 
@@ -49,6 +53,10 @@ app.use(limiter);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve uploaded files statically
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Logging middleware
 if (config.nodeEnv === 'development') {
@@ -86,6 +94,10 @@ app.use('/api/facility-access', facilityAccessRoutes);
 app.use('/api/medications', medicationRoutes);
 app.use('/api/care-plans', carePlanRoutes);
 app.use('/api/schedules', scheduleRoutes);
+app.use('/api/resident-notes', residentNoteRoutes);
+app.use('/api/resident-assessments', residentAssessmentRoutes);
+app.use('/api/resident-reports', residentReportRoutes);
+app.use('/api/resident-forms', residentFormRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
